@@ -1,1 +1,4 @@
 static/histogram*
+*.pyc
+node_modules/*
+.idea/*

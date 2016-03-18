@@ -11,7 +11,7 @@ import sys
 import logging
 
 import hashlib
-
+import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -90,12 +90,13 @@ def mvp(req):
     offers = q.query(req)["offers"]
     prices = []
     for offer in offers:
-        if(offer['prices']['buyNow']>100):
+        if(offer['prices']['buyNow']>300):
             prices.append(offer['prices']['buyNow'])
+    plt.figure(1)
     plt.hist(prices, bins=20)
     m=hashlib.md5()
     m.update(req)
-    hash = m.hexdigest()
+    hash = str(int(time.time()))
     plt.savefig('static/histogram'+hash+'.png')
     return render_template("mvp.html", offers=offers, hash=hash)
 

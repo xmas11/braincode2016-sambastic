@@ -1,7 +1,9 @@
 from flask import Flask
+from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from settings import *
+from test import Query
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -70,5 +72,11 @@ def on_offer_update(mapper, connection, target):
 def index():
     return "Sambastic Alle"
 
+@app.route("/mvp")
+def mvp():
+    q = Query()
+    offers = q.query("thinkpad x230")["offers"]
+    return render_template("mvp.html", offers=offers)
+
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

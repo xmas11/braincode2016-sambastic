@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return "Sambastic Alle"
+    return app.send_static_file('index.html')
 
 @app.route("/mvp")
 def mvp():

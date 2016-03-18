@@ -5,7 +5,14 @@ MarkupSafe==0.23
 SQLAlchemy==1.0.12
 Werkzeug==0.11.4
 argparse==1.2.1
+cycler==0.10.0
 gunicorn==19.4.5
 itsdangerous==0.24
+matplotlib==1.5.1
+numpy==1.10.4
+pyparsing==2.1.0
+python-dateutil==2.5.1
+pytz==2016.1
 requests==2.9.1
+six==1.10.0
 wsgiref==0.1.2

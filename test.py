@@ -25,20 +25,25 @@ def getthinkpad_offer(offer_id='5624261474'):
     return t
 
 
-class Offer:
 
-        def __init__(self):
-                self.key = API_KEY #API key hardcoded
+class Query:
+    '''
+    renamed to prevent duplicate class names
+    '''
+    def __init__(self):
+            self.key = API_KEY #API key hardcoded
 
-        def query(self, query_string, min_price=100, max_price=1000):
-                headers = {'content-type': 'application/json'}
-                t = requests.post(
-                        'http://api.natelefon.pl/v2/allegro/offers?access_token='+API_KEY,
-                        data=json.dumps(
-                                {
-                                        "access_token": API_KEY,
-                                        "searchString": query_string
-                                }),
-                        headers=headers
-                )
-                return t.json()
+    def query(self, query_string, min_price=100, max_price=1000):
+            headers = {'content-type': 'application/json'}
+            t = requests.post(
+                    'http://api.natelefon.pl/v2/allegro/offers?access_token='+API_KEY,
+                    data=json.dumps(
+                            {
+                                    "access_token": API_KEY,
+                                    "searchString": query_string
+                            }),
+                    headers=headers
+            )
+            return t.json()
+
+

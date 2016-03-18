@@ -19,13 +19,13 @@ def getthinkpad():
 
 class Offer:
 
-        def __init__(self,key):
+        def __init__(self):
                 self.key = API_KEY #API key hardcoded
 
         def query(self, query_string, min_price=100, max_price=1000):
                 headers = {'content-type': 'application/json'}
                 t = requests.post(
-                        'http://api.natelefon.pl/v2/allegro/offers?access_token',
+                        'http://api.natelefon.pl/v2/allegro/offers?access_token='+API_KEY,
                         data=json.dumps(
                                 {
                                         "access_token": API_KEY,

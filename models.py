@@ -1,9 +1,8 @@
 from flaskapp import db
 from settings import *
 
-
 class Category(db.Model):
-    name = db.Column(db.String(STR_LEN))
+    name = db.Column(db.String(STR_LEN), primary_key=True)
     parent = db.relationship("Category", backref="child")
 
 class AllegroUser(db.Model):
@@ -29,21 +28,23 @@ class Offer(db.Model):
 
     def log_offer(self):
         """
-            Logs previous offer data.
+            Log current offer data.
         """
         pass
 
-class Bid(db.Model):
-    user = db.relationship('AllegroUser', backref="bids")
-    offer = db.relationship("Offer", backref="bids")
-    amount = db.Column(db.Integer)
-    dt = db.Column(db.DateTime)
-
 class Purchase(db.Model):
-    pass
+    offer = db.relationship("Offer", backref="logs", primary_key=True)
+    buyer = db.relationship('AllegroUser')
+    sold_price = db.Column(db.Integer)
+    sold_dt = db.Column(db.DateTime)
+    buy_now = db.Column(db.Boolean)
 
 class OfferLog(db.Model):
-    pass
+    offer = db.relationship("Offer", backref="logs", primary_key=True)
+    highest_bid_amount = db.Column(db.Integer)
+    buy_now_price = db.Column(db.Integer)
+    end_dt = db.Column(db.DateTime)
+    dt = db.Column(db.DateTime)
 
 class Product(db.Model):
     pass

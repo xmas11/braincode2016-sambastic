@@ -1,0 +1,9 @@
+<img src="/static/hist.png" alt="Prices histogram"/>
+<ul>
+{% for offer in offers %}
+<li>
+Title: {{ offer.name }}
+Price: {{ offer.prices.buyNow  }} 
+</li>
+{% endfor %}
+</ul>

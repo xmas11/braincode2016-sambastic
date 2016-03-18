@@ -1,1 +1,1 @@
-STR_LEN = 100
+STR_LEN = 200

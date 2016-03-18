@@ -10,6 +10,9 @@ import os
 import sys
 import logging
 
+import hashlib
+
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 db = SQLAlchemy(app)
@@ -87,10 +90,14 @@ def mvp(req):
     offers = q.query(req)["offers"]
     prices = []
     for offer in offers:
-        prices.append(offer['prices']['buyNow'])
-    plt.hist(prices)
-    plt.savefig('static/hist.png')
-    return render_template("mvp.html", offers=offers)
+        if(offer['prices']['buyNow']>100):
+            prices.append(offer['prices']['buyNow'])
+    plt.hist(prices, bins=20)
+    m=hashlib.md5()
+    m.update(req)
+    hash = m.hexdigest()
+    plt.savefig('static/histogram'+hash+'.png')
+    return render_template("mvp.html", offers=offers, hash=hash)
 
 if __name__ == '__main__':
     app.run(debug=True)

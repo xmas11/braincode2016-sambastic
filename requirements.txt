@@ -1,3 +1,4 @@
 Flask==0.10.1
 scipy==0.17.0
 SQLAlchemy==1.0.12
+Flask-SQLAlchemy==2.1

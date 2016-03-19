@@ -11,8 +11,10 @@ user_datastore.create_user(email=USER_EMAIL, password=USER_PASSWORD)
 session.commit()
 user = User.query.filter(User.email==USER_EMAIL).first()
 
-tracker = Tracker(name='Tracker 1', query='lenovo')
+tracker = Tracker(name='Tracker 1', query_string='lenovo')
+empty_tracker = Tracker(name='Tracker 2', query_string='macbook')
 session.add(tracker)
+session.add(empty_tracker)
 
 offer = Offer(offer_id='offer_1', title='Offer 1')
 session.add(offer)
@@ -32,6 +34,7 @@ for user_tracker in user.trackers:
 
 for tracker_offer in tracker.offers:
     print(tracker_offer.offer.title, tracker_offer.offer.offer_id)
+
 
 
 

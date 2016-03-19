@@ -1,8 +1,10 @@
 import datetime
 import json
+from sqlalchemy.sql.expression import ClauseElement
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask.ext.cors import CORS, cross_origin
 from flask.ext.security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
 from sqlalchemy import event, desc
@@ -20,12 +22,21 @@ import time
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SECRET_KEY'] = SECRET_KEY
+CORS(app)
 db = SQLAlchemy(app)
+
+def dget(d, fields):
+    res = None
+    for field in fields:
+        res = d.get(field, {})
+        d = res
+    return res == {} and None or res
+
 
 def create_or_update(session, model, defaults=None, **kwargs):
     instance = session.query(model).filter_by(**kwargs).first()
     if instance:
-        for k, v in defaults or {}:
+        for k, v in (defaults or {}).items():
             setattr(instance, k, v)
         return instance, False
     else:
@@ -106,7 +117,7 @@ class AllegroUser(db.Model):
             rclass += 1
 
 class Offer(db.Model):
-    JSON_FIELDS = ['offer_id', 'title', 'seller_login', 'url', 'sold', 'finished',
+    JSON_FIELDS = ['offer_id', 'title', 'seller_login', 'url', 'image_url', 'sold', 'finished',
                    'buy_now_price', 'highest_bid_amount', 'sold_price', 'cheapest_shipment',
                    'bids_number', 'published_dt', 'end_dt', 'changed_dt', 'sold_dt']
     offer_id = db.Column(db.String(STR_LEN), primary_key=True)
@@ -115,14 +126,15 @@ class Offer(db.Model):
     seller = db.relationship('AllegroUser')
     seller_login = db.Column(db.String(STR_LEN), db.ForeignKey('allegro_user.login'))
     url = db.Column(db.String(STR_LEN))
+    image_url = db.Column(db.String(STR_LEN))
 
     sold = db.Column(db.Boolean)
     finished = db.Column(db.Boolean)
 
-    buy_now_price = db.Column(db.Integer)
-    highest_bid_amount = db.Column(db.Integer)
-    sold_price = db.Column(db.Integer)
-    cheapest_shipment = db.Column(db.Integer)
+    buy_now_price = db.Column(db.Float)
+    highest_bid_amount = db.Column(db.Float)
+    sold_price = db.Column(db.Float)
+    cheapest_shipment = db.Column(db.Float)
     bids_number = db.Column(db.Integer)
 
     published_dt = db.Column(db.DateTime)
@@ -131,8 +143,26 @@ class Offer(db.Model):
     sold_dt = db.Column(db.DateTime)
 
     @classmethod
-    def create_or_update(cls, offer_data):
-        pass
+    def from_api_to_dict(cls, data):
+        seller, created = create_or_update(db.session, AllegroUser, login=data['seller']['login'],
+                                           defaults={'rating': data['seller']['rating']})
+        image_urls = [dget(data, ['mainImage', size]) for size in IMAGE_SIZE_ORDER]
+        ending_time = data.get('endingTime')
+
+        res = {
+            'offer_id': data['id'],
+            'title' : data.get('name'),
+            'seller': seller,
+            'url': data.get('url'),
+            'image_url': image_urls and image_urls[0],
+            'buy_now_price': dget(data, ['prices', 'buyNow']),
+            'highest_bid_amount': dget(data, ['prices', 'bid']),
+            'cheapest_shipment': dget(data, ['prices', 'cheapestShipment']),
+            'bids_number': dget(data, ['bids', 'count'])
+        }
+        if ending_time is not None:
+            res['end_dt'] = datetime.datetime.fromtimestamp(ending_time)
+        return res
 
 class TrackerOffer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
@@ -182,23 +212,29 @@ class Tracker(db.Model):
     max_price = db.Column(db.Integer)
     offers = db.relationship('TrackerOffer', backref='tracker')
 
-    def fill_offers(self, reset=False):
+    def fetch_offers(self, reset=False):
         if reset or (not self.offers):
             for offer_data in ApiHelper.request_offers(self.query_string,
                                               min_price=self.min_price,
                                               max_price=self.max_price):
-                offer = Offer.create_or_update(offer_data)
-
-
+                offer_data_dict = Offer.from_api_to_dict(offer_data)
+                offer, created = create_or_update(db.session, Offer,
+                                                  offer_id=offer_data_dict.get('offer_id'),
+                                                  defaults=offer_data_dict)
+                tracker_offer, created = create_or_update(db.session, TrackerOffer,
+                                                        tracker_id=self.id, offer_id=offer.offer_id)
+            db.session.commit()
 
 
 def on_offer_field_change(field):
+    from sqlalchemy.util import symbol
     def _on_field_change(offer, value, old_value, initiator):
+        if old_value == symbol('NO_VALUE') or old_value == symbol('NEVER_SET'):
+            old_value = None
         if offer.offer_id and value != old_value and old_value is not None:
             log = OfferLog(offer=offer)
             log.offer_id = offer.offer_id
             setattr(log, field, old_value)
-            print('creating log', vars(log))
             db.session.add(log)
             db.session.commit()
     return _on_field_change
@@ -221,6 +257,7 @@ app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 
 @login_required
+@cross_origin()
 @app.route("/trackers")
 def get_trackers():
     from flask.ext.security.core import current_user
@@ -230,6 +267,7 @@ def get_trackers():
     return json.dumps(trackers)
 
 @login_required
+@cross_origin()
 @app.route("/create_tracker", methods=['POST'])
 def create_tracker():
     from flask.ext.security.core import current_user
@@ -239,8 +277,10 @@ def create_tracker():
     user_tracker = UserTracker(user=current_user, tracker=tracker)
     db.session.add(user_tracker)
     db.session.commit()
+    tracker.fetch_offers(reset=data.get('reset', False))
 
 @login_required
+@cross_origin()
 @app.route("/offers_for_tracker/<tracker_id>")
 def user_offers_for_tracker(tracker_id):
     tracker_offer_ids = map(lambda x: x.offer.offer_id,
@@ -253,6 +293,7 @@ def user_offers_for_tracker(tracker_id):
     return json.dumps(offers)
 
 @login_required
+@cross_origin()
 @app.route("/dismiss_offer/<offer_id>")
 def dismiss_offer(offer_id):
     from flask.ext.security.core import current_user
@@ -263,6 +304,7 @@ def dismiss_offer(offer_id):
     return app.send_static_file('index.html')
 
 @login_required
+@cross_origin()
 @app.route("/view_offer/<offer_id>")
 def view_offer(offer_id):
     from flask.ext.security.core import current_user

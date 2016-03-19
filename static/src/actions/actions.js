@@ -44,11 +44,11 @@ export function listTrackers() {
     }
 }
 
-export function trackersListed(json) {
-    console.log('trackersListed', json);
+export function trackersListed(trackers) {
+    console.log('trackersListed', trackers);
     return {
         type: TRACKERS_LISTED,
-        trackers: json.data.children.map(child => child.data),
+        trackers: trackers,
         receivedAt: Date.now()
     }
 }

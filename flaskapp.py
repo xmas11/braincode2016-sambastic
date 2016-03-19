@@ -1,7 +1,8 @@
+import datetime
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import event
+from sqlalchemy import event, desc
 from settings import *
 from test import Query
 
@@ -51,7 +52,7 @@ class OfferLog(db.Model):
     highest_bid_amount = db.Column(db.Integer)
     buy_now_price = db.Column(db.Integer)
     end_dt = db.Column(db.DateTime)
-    modified_at_dt = db.Column(db.DateTime)
+    created_at_dt = db.Column(db.DateTime, primary_key=True)
 
 """
 class Product(db.Model):
@@ -64,9 +65,40 @@ class ProductFilter(db.Model):
     pass
 """
 # standard decorator style
+
+def on_offer_field_change(field):
+    def _on_field_change(offer, value, old_value, initiator):
+        if offer.offer_id and value != old_value and old_value is not None:
+            log = OfferLog(offer=offer)
+            log.offer_id = offer.offer_id
+            setattr(log, field, old_value)
+            print('creating log', vars(log))
+            db.session.add(log)
+            db.session.commit()
+    return _on_field_change
+
+event.listen(Offer.buy_now_price, 'set', on_offer_field_change('buy_now_price'))
+event.listen(Offer.end_dt, 'set', on_offer_field_change('end_dt'))
+event.listen(Offer.highest_bid_amount, 'set', on_offer_field_change('highest_bid_amount'))
+
+"""
 @event.listens_for(Offer, 'before_update')
-def on_offer_update(mapper, connection, target):
-    print(target.title)
+def on_before_update(mapper, connection, offer):
+    if offer and offer.offer_id:
+        fields = ['offer_id', 'buy_now_price', 'end_dt', 'highest_bid_amount']
+        last_log = OfferLog.query.order_by(desc('created_at_dt')).first()
+        if (not last_log) or any(getattr(last_log, field) != getattr(offer, field) for field in fields):
+            log = OfferLog(offer=offer)
+            for field in fields:
+                setattr(log, field, getattr(offer, field))
+            print('creating log', vars(log))
+            db.session.add(log)
+            db.session.commit()
+"""
+
+@event.listens_for(OfferLog, 'before_insert')
+def on_offer_log_insert(mapper, connection, offer_log):
+    offer_log.created_at_dt = datetime.datetime.now()
 
 @app.route("/")
 def index():

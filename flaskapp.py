@@ -40,6 +40,7 @@ class User(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
+    offers = db.relationship("UserOffer")
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -73,6 +74,13 @@ class Offer(db.Model):
     end_dt = db.Column(db.DateTime)
     changed_dt = db.Column(db.DateTime)
     sold_dt = db.Column(db.DateTime)
+
+class UserOffer(db.Model):
+    offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    offer = db.relationship("Offer")
+    status = db.Column(db.Integer)
+    last_seen = db.Column(db.DateTime)
 
 class Purchase(db.Model):
     offer = db.relationship("Offer", backref="purchases")

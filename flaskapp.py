@@ -130,7 +130,7 @@ def mvp(req):
     m.update(req)
     hash = str(int(time.time()))
     plt.savefig('static/histogram'+hash+'.png')
-    return render_template("mvp.html", offers=offers, hash=hash)
+    return render_template("mvp.html", offers=offers, hash=hash, req=req)
 
 if __name__ == '__main__':
     app.run(debug=True)

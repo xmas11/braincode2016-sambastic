@@ -1,4 +1,5 @@
 import datetime
+import json
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -92,6 +93,9 @@ class AllegroUser(db.Model):
             rclass += 1
 
 class Offer(db.Model):
+    JSON_FIELDS = ['offer_id', 'title', 'seller_login', 'url', 'sold', 'finished',
+                   'buy_now_price', 'highest_bid_amount', 'sold_price', 'cheapest_shipment',
+                   'bids_number', 'published_dt', 'end_dt', 'changed_dt', 'sold_dt']
     offer_id = db.Column(db.String(STR_LEN), primary_key=True)
 
     title = db.Column(db.Text)
@@ -148,6 +152,7 @@ class OfferLog(db.Model):
     created_at_dt = db.Column(db.DateTime, primary_key=True)
 
 class Tracker(db.Model):
+    JSON_FIELDS = ['id', 'name', 'query', 'min_price', 'max_price']
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STR_LEN))
     query = db.Column(db.String(STR_LEN))
@@ -156,7 +161,6 @@ class Tracker(db.Model):
     offers = db.relationship('TrackerOffer', backref='tracker')
 
 """
-
 class ProductOffers(db.Model):
     pass
 
@@ -180,6 +184,12 @@ event.listen(Offer.buy_now_price, 'set', on_offer_field_change('buy_now_price'))
 event.listen(Offer.end_dt, 'set', on_offer_field_change('end_dt'))
 event.listen(Offer.highest_bid_amount, 'set', on_offer_field_change('highest_bid_amount'))
 
+def jsonify(mapper, instance):
+    res = dict()
+    for field in mapper.JSON_FIELDS:
+        res[field] = getattr(instance, field)
+    return json.dumps(res)
+
 @event.listens_for(OfferLog, 'before_insert')
 def on_offer_log_insert(mapper, connection, offer_log):
     offer_log.created_at_dt = datetime.datetime.now()
@@ -191,7 +201,9 @@ app.logger.setLevel(logging.ERROR)
 @app.route("/trackers")
 def get_trackers():
     from flask.ext.security.core import current_user
-    pass
+    trackers = []
+    for user_tracker in UserTracker.query.filter(UserTracker.user==current_user):
+        return jsonify(Tracker, user_tracker.tracker)
 
 @login_required
 @app.route("/create_tracker")

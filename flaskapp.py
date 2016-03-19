@@ -40,7 +40,8 @@ class User(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
-    offers = db.relationship("UserOffer")
+    offers = db.relationship("UserOffer", backref="user")
+    trackers = db.relationship("UserTracker", backref="user")
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -92,6 +93,7 @@ class AllegroUser(db.Model):
 
 class Offer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), primary_key=True)
+
     title = db.Column(db.Text)
     seller = db.relationship('AllegroUser')
     seller_login = db.Column(db.String(STR_LEN), db.ForeignKey('allegro_user.login'))
@@ -111,12 +113,22 @@ class Offer(db.Model):
     changed_dt = db.Column(db.DateTime)
     sold_dt = db.Column(db.DateTime)
 
+class TrackerOffer(db.Model):
+    offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
+    tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
+    offer = db.relationship("Offer")
+
 class UserOffer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     offer = db.relationship("Offer")
     status = db.Column(db.Integer)
     last_seen = db.Column(db.DateTime)
+
+class UserTracker(db.Model):
+    tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    tracker = db.relationship("Tracker")
 
 class Purchase(db.Model):
     offer = db.relationship("Offer", backref="purchases")
@@ -135,10 +147,15 @@ class OfferLog(db.Model):
     end_dt = db.Column(db.DateTime)
     created_at_dt = db.Column(db.DateTime, primary_key=True)
 
+class Tracker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(STR_LEN))
+    query = db.Column(db.String(STR_LEN))
+    min_price = db.Column(db.Integer)
+    max_price = db.Column(db.Integer)
+    offers = db.relationship('TrackerOffer', backref='tracker')
 
 """
-class Product(db.Model):
-    pass
 
 class ProductOffers(db.Model):
     pass
@@ -169,6 +186,24 @@ def on_offer_log_insert(mapper, connection, offer_log):
 
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
+
+@login_required
+@app.route("/trackers")
+def get_trackers():
+    from flask.ext.security.core import current_user
+    pass
+
+@login_required
+@app.route("/create_tracker")
+def create_tracker():
+    from flask.ext.security.core import current_user
+    pass
+
+@login_required
+@app.route("/offers_for_tracker")
+def offers_for_tracker():
+    from flask.ext.security.core import current_user
+    pass
 
 @login_required
 @app.route("/")

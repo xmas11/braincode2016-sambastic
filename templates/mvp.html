@@ -1,9 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+ <div class="card">
+    <div class="card-image waves-effect waves-block waves-light">
+<img class="activator" src="/static/histogram{{ hash }}.png" alt="Prices histogram"/>
+    </div>
+    <div class="card-content">
+     <span class="card-title activator grey-text text-darken-4"> {{ query }}<i class="material-icons right">more_vert</i></span>
+      <p><a href="#">Know more</a></p>
+    </div>
+    <div class="card-reveal">
+     <span class="card-title grey-text text-darken-4">{{ query }}<i class="material-icons right">close</i></span>
+      <p>More info about product</p>
+    </div>
+  </div>
+
 <img src="/static/histogram{{ hash }}.png" alt="Prices histogram"/>
-<ul>
+<ul class="collection">
 {% for offer in offers %}
-<li>
+<li class="collection-item">
 Title: {{ offer.name }}
 Price: {{ offer.prices.buyNow  }} 
 </li>
 {% endfor %}
 </ul>
+{% endblock %}

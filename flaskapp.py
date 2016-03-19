@@ -45,13 +45,6 @@ class User(db.Model, UserMixin):
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
 
-# Create a user to test with
-@app.before_first_request
-def create_user():
-    if not User.query.filter(User.email==USER_EMAIL):
-        user_datastore.create_user(email=USER_EMAIL, password=USER_PASSWORD)
-        db.session.commit()
-
 """ ******************  Models  ******************** """
 
 class Category(db.Model):

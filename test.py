@@ -1,7 +1,9 @@
 import requests
+
 import json
 
 API_KEY = "0e447ed8a0daa0f01f074d87c775e9082b135e1c4c714a61eafbcf5d6f4cf911"
+
 
 def getthinkpad():
         headers = {'content-type': 'application/json'}
@@ -24,26 +26,5 @@ def getthinkpad_offer(offer_id='5624261474'):
     )
     return t
 
-
-
-class Query:
-    '''
-    renamed to prevent duplicate class names
-    '''
-    def __init__(self):
-            self.key = API_KEY #API key hardcoded
-
-    def query(self, query_string, min_price=100, max_price=1000):
-            headers = {'content-type': 'application/json'}
-            t = requests.post(
-                    'http://api.natelefon.pl/v2/allegro/offers?access_token='+API_KEY,
-                    data=json.dumps(
-                            {
-                                    "access_token": API_KEY,
-                                    "searchString": query_string
-                            }),
-                    headers=headers
-            )
-            return t.json()
 
 

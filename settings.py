@@ -2,6 +2,7 @@ STR_LEN = 200
 USER_EMAIL = 'user@gmail.com'
 USER_PASSWORD = 'maslo'
 SECRET_KEY = 'secret_key'
+API_KEY = "0e447ed8a0daa0f01f074d87c775e9082b135e1c4c714a61eafbcf5d6f4cf911"
 
 USER_OFFER_NOT_VIEWED = 0
 USER_OFFER_VIEWED = 1

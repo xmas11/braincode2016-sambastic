@@ -6,7 +6,7 @@ from flask.ext.security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
 from sqlalchemy import event, desc
 from settings import *
-from test import Query
+from api_helper import ApiHelper
 from matplotlib import pyplot as plt
 
 import os
@@ -155,11 +155,9 @@ def index():
     return app.send_static_file('index.html')
 
 @login_required
-@app.route("/mvp/<req>")
-def mvp(req):
-    from flask.ext.security.core import current_user
-    q = Query()
-    offers = q.query(req)["offers"]
+@app.route("/mvp/<query>")
+def mvp(query):
+    offers = ApiHelper.request_offers(query_string=query)["offers"]
     prices = []
     for offer in offers:
         if(offer['prices']['buyNow']>300):
@@ -167,10 +165,10 @@ def mvp(req):
     plt.figure(1)
     plt.hist(prices, bins=20)
     m=hashlib.md5()
-    m.update(req)
+    m.update(query)
     hash = str(int(time.time()))
     plt.savefig('static/histogram'+hash+'.png')
-    return render_template("mvp.html", offers=offers, hash=hash, req=req)
+    return render_template("mvp.html", offers=offers, hash=hash, req=query)
 
 if __name__ == '__main__':
     app.run(debug=True)

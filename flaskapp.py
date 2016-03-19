@@ -2,6 +2,8 @@ import datetime
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask.ext.security import Security, SQLAlchemyUserDatastore, \
+    UserMixin, RoleMixin, login_required
 from sqlalchemy import event, desc
 from settings import *
 from test import Query
@@ -16,7 +18,41 @@ import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+app.config['SECRET_KEY'] = SECRET_KEY
 db = SQLAlchemy(app)
+
+"""***********  User management  ************"""
+
+roles_users = db.Table('roles_users',
+        db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+        db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+
+class Role(db.Model, RoleMixin):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True)
+    password = db.Column(db.String(255))
+    active = db.Column(db.Boolean())
+    confirmed_at = db.Column(db.DateTime())
+    roles = db.relationship('Role', secondary=roles_users,
+                            backref=db.backref('users', lazy='dynamic'))
+
+# Setup Flask-Security
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)
+
+# Create a user to test with
+@app.before_first_request
+def create_user():
+    if not User.query.filter(User.email==USER_EMAIL):
+        user_datastore.create_user(email=USER_EMAIL, password=USER_PASSWORD)
+        db.session.commit()
+
+""" ******************  Models  ******************** """
 
 class Category(db.Model):
     name = db.Column(db.String(STR_LEN), primary_key=True)
@@ -61,6 +97,7 @@ class OfferLog(db.Model):
     buy_now_price = db.Column(db.Integer)
     end_dt = db.Column(db.DateTime)
     created_at_dt = db.Column(db.DateTime, primary_key=True)
+
 
 """
 class Product(db.Model):
@@ -111,13 +148,15 @@ def on_offer_log_insert(mapper, connection, offer_log):
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 
-
+@login_required
 @app.route("/")
 def index():
     return app.send_static_file('index.html')
 
+@login_required
 @app.route("/mvp/<req>")
 def mvp(req):
+    from flask.ext.security.core import current_user
     q = Query()
     offers = q.query(req)["offers"]
     prices = []

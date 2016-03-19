@@ -5,6 +5,14 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event, desc
 from settings import *
 from test import Query
+from matplotlib import pyplot as plt
+
+import os
+import sys
+import logging
+
+import hashlib
+import time
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -100,15 +108,29 @@ def on_before_update(mapper, connection, offer):
 def on_offer_log_insert(mapper, connection, offer_log):
     offer_log.created_at_dt = datetime.datetime.now()
 
+app.logger.addHandler(logging.StreamHandler(sys.stdout))
+app.logger.setLevel(logging.ERROR)
+
+
 @app.route("/")
 def index():
-    return "Sambastic Alle"
+    return app.send_static_file('index.html')
 
-@app.route("/mvp")
-def mvp():
+@app.route("/mvp/<req>")
+def mvp(req):
     q = Query()
-    offers = q.query("thinkpad x230")["offers"]
-    return render_template("mvp.html", offers=offers)
+    offers = q.query(req)["offers"]
+    prices = []
+    for offer in offers:
+        if(offer['prices']['buyNow']>300):
+            prices.append(offer['prices']['buyNow'])
+    plt.figure(1)
+    plt.hist(prices, bins=20)
+    m=hashlib.md5()
+    m.update(req)
+    hash = str(int(time.time()))
+    plt.savefig('static/histogram'+hash+'.png')
+    return render_template("mvp.html", offers=offers, hash=hash)
 
 if __name__ == '__main__':
     app.run(debug=True)

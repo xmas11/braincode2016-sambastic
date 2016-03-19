@@ -2,6 +2,6 @@ STR_LEN = 200
 USER_EMAIL = 'user@gmail.com'
 USER_PASSWORD = 'maslo'
 SECRET_KEY = 'secret_key'
-API_KEY = '2cd2d132d8c1ba734ba5595f4720393d6a27697d765dd6ddf23481b42a2986df'
+API_KEY = "1971f1f2ef584fde8a0ff00e9eeb9a911c0360bf4bef0116d0fcb2eaca9517de"
 IMAGE_SIZE_ORDER = ['large', 'medium', 'small']
 

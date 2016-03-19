@@ -49,9 +49,33 @@ security = Security(app, user_datastore)
 """ ******************  Models  ******************** """
 
 class Category(db.Model):
-    name = db.Column(db.String(STR_LEN), primary_key=True)
-    #parent = db.relationship('Category', backref='children')
-    #parent_name = db.Column(db.String(STR_LEN), db.ForeignKey('category.name'))
+    category_id = db.Column(db.String(STR_LEN), primary_key=True)
+    name = db.Column(db.String(STR_LEN))
+    has_children = db.Column(db.Boolean)
+    parent_id = db.Column(db.String(STR_LEN), db.ForeignKey('category.category_id'))
+    children = db.relationship('Category', backref=db.backref('parent', remote_side=[category_id]))
+
+    @classmethod
+    def fetch_all_categories(cls):
+        categories = cls.query.filter()
+
+    @classmethod
+    def save_categories(cls, category_data_list):
+        session = db.session
+        for category_data in category_data_list:
+            cls.save_category(category_data, session=session)
+        session.commit()
+
+    @classmethod
+    def save_category(cls, category_data, session=None):
+        category = cls(category_id=category_data['id'],
+                       name=category_data.get('name'),
+                       has_children=category_data.get('hasChildren'))
+        if session:
+            session.add(category)
+        else:
+            db.session.add(category)
+            db.session.commit()
 
 class AllegroUser(db.Model):
     THRESHOLDS = [5, 50, 250, 2500, 12500, 1e9]
@@ -138,21 +162,6 @@ def on_offer_field_change(field):
 event.listen(Offer.buy_now_price, 'set', on_offer_field_change('buy_now_price'))
 event.listen(Offer.end_dt, 'set', on_offer_field_change('end_dt'))
 event.listen(Offer.highest_bid_amount, 'set', on_offer_field_change('highest_bid_amount'))
-
-"""
-@event.listens_for(Offer, 'before_update')
-def on_before_update(mapper, connection, offer):
-    if offer and offer.offer_id:
-        fields = ['offer_id', 'buy_now_price', 'end_dt', 'highest_bid_amount']
-        last_log = OfferLog.query.order_by(desc('created_at_dt')).first()
-        if (not last_log) or any(getattr(last_log, field) != getattr(offer, field) for field in fields):
-            log = OfferLog(offer=offer)
-            for field in fields:
-                setattr(log, field, getattr(offer, field))
-            print('creating log', vars(log))
-            db.session.add(log)
-            db.session.commit()
-"""
 
 @event.listens_for(OfferLog, 'before_insert')
 def on_offer_log_insert(mapper, connection, offer_log):

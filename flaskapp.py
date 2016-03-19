@@ -184,11 +184,11 @@ event.listen(Offer.buy_now_price, 'set', on_offer_field_change('buy_now_price'))
 event.listen(Offer.end_dt, 'set', on_offer_field_change('end_dt'))
 event.listen(Offer.highest_bid_amount, 'set', on_offer_field_change('highest_bid_amount'))
 
-def jsonify(mapper, instance):
+def instance_to_dict(mapper, instance):
     res = dict()
     for field in mapper.JSON_FIELDS:
         res[field] = getattr(instance, field)
-    return json.dumps(res)
+    return res
 
 @event.listens_for(OfferLog, 'before_insert')
 def on_offer_log_insert(mapper, connection, offer_log):
@@ -203,19 +203,27 @@ def get_trackers():
     from flask.ext.security.core import current_user
     trackers = []
     for user_tracker in UserTracker.query.filter(UserTracker.user==current_user):
-        return jsonify(Tracker, user_tracker.tracker)
+        trackers.append(instance_to_dict(Tracker, user_tracker.tracker))
+    return json.dumps(trackers)
 
 @login_required
-@app.route("/create_tracker")
+@app.route("/create_tracker", methods=['POST'])
 def create_tracker():
     from flask.ext.security.core import current_user
-    pass
+    data = json.loads(request.data)
+    tracker = Tracker(**data)
+    db.session.add(tracker)
+    user_tracker = UserTracker(user=current_user, tracker=tracker)
+    db.session.add(user_tracker)
+    db.session.commit()
 
 @login_required
-@app.route("/offers_for_tracker")
-def offers_for_tracker():
-    from flask.ext.security.core import current_user
-    pass
+@app.route("/offers_for_tracker/<tracker_id>")
+def offers_for_tracker(tracker_id):
+    offers = []
+    for tracker_offer in TrackerOffer.query.filter(TrackerOffer.tracker_id==tracker_id):
+        offers.append(instance_to_dict(Offer, tracker_offer.offer))
+    return json.dumps(offers)
 
 @login_required
 @app.route("/")

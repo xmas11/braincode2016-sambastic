@@ -28,7 +28,7 @@ user_tracker = UserTracker(user=user, tracker=tracker)
 session.commit()
 
 for user_tracker in user.trackers:
-    print(user_tracker.tracker.name)
+    print(user_tracker.tracker.name, user_tracker.tracker.id)
 
 for tracker_offer in tracker.offers:
     print(tracker_offer.offer.title)

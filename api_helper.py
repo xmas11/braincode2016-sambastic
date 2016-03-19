@@ -18,8 +18,9 @@ def resp_ok(resp):
 
 class ApiHelper(object):
 
+    TEMPORARY_LIMIT_FOR_QUERY = 10 # in order not to make too many API CALLS
     HEADERS = {'content-type': 'application/json'}
-    DEFAULT_LIMIT = 1000
+    DEFAULT_LIMIT = 10
 
     @classmethod
     def request_offer(cls, offer_id):
@@ -67,7 +68,7 @@ class ApiHelper(object):
         params["limit"] = limit
         offset = 0
         results_number = 1e6
-        while offset < results_number:
+        while offset < results_number and offset < cls.TEMPORARY_LIMIT_FOR_QUERY:
             print("LOG: Calling %s (offset %d)" % (url, offset))
             params['offset'] = offset
             resp = requests.post(url, data=json.dumps(params), headers=cls.HEADERS)

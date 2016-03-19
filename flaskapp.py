@@ -22,6 +22,19 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SECRET_KEY'] = SECRET_KEY
 db = SQLAlchemy(app)
 
+def create_or_update(session, model, defaults=None, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        for k, v in defaults or {}:
+            setattr(instance, k, v)
+        return instance, False
+    else:
+        params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
+        params.update(defaults or {})
+        instance = model(**params)
+        session.add(instance)
+        return instance, True
+
 """***********  User management  ************"""
 
 roles_users = db.Table('roles_users',
@@ -117,6 +130,10 @@ class Offer(db.Model):
     changed_dt = db.Column(db.DateTime)
     sold_dt = db.Column(db.DateTime)
 
+    @classmethod
+    def create_or_update(cls, offer_data):
+        pass
+
 class TrackerOffer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
     tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
@@ -165,14 +182,15 @@ class Tracker(db.Model):
     max_price = db.Column(db.Integer)
     offers = db.relationship('TrackerOffer', backref='tracker')
 
-"""
-class ProductOffers(db.Model):
-    pass
+    def fill_offers(self, reset=False):
+        if reset or (not self.offers):
+            for offer_data in ApiHelper.request_offers(self.query_string,
+                                              min_price=self.min_price,
+                                              max_price=self.max_price):
+                offer = Offer.create_or_update(offer_data)
 
-class ProductFilter(db.Model):
-    pass
-"""
-# standard decorator style
+
+
 
 def on_offer_field_change(field):
     def _on_field_change(offer, value, old_value, initiator):

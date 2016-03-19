@@ -54,7 +54,17 @@ class Category(db.Model):
     #parent_name = db.Column(db.String(STR_LEN), db.ForeignKey('category.name'))
 
 class AllegroUser(db.Model):
+    THRESHOLDS = [5, 50, 250, 2500, 12500, 1e9]
     login = db.Column(db.String(STR_LEN), primary_key=True)
+    rating = db.Column(db.Integer)
+
+    @classmethod
+    def user_rating_class(cls, rating):
+        rclass = 0
+        for threshold in cls.THRESHOLDS:
+            if rating < threshold:
+                return rclass
+            rclass += 1
 
 class Offer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), primary_key=True)
@@ -69,6 +79,8 @@ class Offer(db.Model):
     buy_now_price = db.Column(db.Integer)
     highest_bid_amount = db.Column(db.Integer)
     sold_price = db.Column(db.Integer)
+    cheapest_shipment = db.Column(db.Integer)
+    bids_number = db.Column(db.Integer)
 
     published_dt = db.Column(db.DateTime)
     end_dt = db.Column(db.DateTime)
@@ -157,7 +169,9 @@ def index():
 @login_required
 @app.route("/mvp/<query>")
 def mvp(query):
-    offers = ApiHelper.request_offers(query_string=query)["offers"]
+    offers = list(ApiHelper.request_offers(query_string=query,
+                                      min_price=100,
+                                      max_price=3000))
     prices = []
     for offer in offers:
         if(offer['prices']['buyNow']>300):

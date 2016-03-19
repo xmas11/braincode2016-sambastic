@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Card, Row, Col } from 'react-materialize';
 
-export default class Hello extends React.Component {
+export default class TrackerCard extends React.Component {
     constructor(...args) {
         super(...args);
 
@@ -14,15 +14,5 @@ export default class Hello extends React.Component {
                 Hej
             </Card>
         )
-    }
-
-    render() {
-        return (
-            <Row>
-                <Col s={12} className="">
-                    {this.getContent()}
-                </Col>
-            </Row>
-        );
     }
 }

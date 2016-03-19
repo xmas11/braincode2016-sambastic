@@ -1,6 +1,52 @@
 import { combineReducers } from 'redux';
+import {
+    CREATE_TRACKER,
+    LIST_TRACKERS,
+    LIST_OFFERS_FOR_TRACKER,
+    SET_VISIBILITY_FILTER,
+    VisibilityFilters
+} from '../actions/actions';
+const { SHOW_ALL } = VisibilityFilters;
 
 
-export default combineReducers({
+function visibilityFilter(state = SHOW_ALL, action) {
+    switch (action.type) {
+        case SET_VISIBILITY_FILTER:
+            return action.filter;
+        default:
+            return state
+    }
+}
 
+/*
+function todos(state = [], action) {
+    switch (action.type) {
+        case ADD_TODO:
+            return [
+                ...state,
+                {
+                    text: action.text,
+                    completed: false
+                }
+            ];
+        case COMPLETE_TODO:
+            return state.map((todo, index) => {
+                if (index === action.index) {
+                    return Object.assign({}, todo, {
+                        completed: true
+                    })
+                }
+                return todo
+            });
+        default:
+            return state
+    }
+}
+*/
+
+const pricemize = combineReducers({
+    visibilityFilter
+    //todos
 });
+
+export default pricemize

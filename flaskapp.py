@@ -25,6 +25,7 @@ app.config['SECRET_KEY'] = SECRET_KEY
 CORS(app)
 db = SQLAlchemy(app)
 
+
 def dget(d, fields):
     res = None
     for field in fields:
@@ -71,6 +72,7 @@ class User(db.Model, UserMixin):
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
+
 
 """ ******************  Models  ******************** """
 
@@ -256,30 +258,27 @@ def on_offer_log_insert(mapper, connection, offer_log):
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 
-@login_required
 @cross_origin()
 @app.route("/trackers")
 def get_trackers():
-    from flask.ext.security.core import current_user
+    global_user = User.query.filter(User.email==USER_EMAIL).first()
     trackers = []
-    for user_tracker in UserTracker.query.filter(UserTracker.user==current_user):
+    for user_tracker in UserTracker.query.filter(UserTracker.user==global_user):
         trackers.append(instance_to_dict(Tracker, user_tracker.tracker))
     return json.dumps(trackers)
 
-@login_required
 @cross_origin()
 @app.route("/create_tracker", methods=['POST'])
 def create_tracker():
-    from flask.ext.security.core import current_user
+    global_user = User.query.filter(User.email==USER_EMAIL).first()
     data = json.loads(request.data)
     tracker = Tracker(**data)
     db.session.add(tracker)
-    user_tracker = UserTracker(user=current_user, tracker=tracker)
+    user_tracker = UserTracker(user=global_user, tracker=tracker)
     db.session.add(user_tracker)
     db.session.commit()
     tracker.fetch_offers(reset=data.get('reset', False))
 
-@login_required
 @cross_origin()
 @app.route("/offers_for_tracker/<tracker_id>")
 def user_offers_for_tracker(tracker_id):
@@ -292,34 +291,30 @@ def user_offers_for_tracker(tracker_id):
         offers.append(offer_data)
     return json.dumps(offers)
 
-@login_required
 @cross_origin()
 @app.route("/dismiss_offer/<offer_id>")
 def dismiss_offer(offer_id):
-    from flask.ext.security.core import current_user
-    user_offer = UserOffer.query.filter(UserOffer.user==current_user).filter(UserOffer.offer_id==offer_id).first()
+    global_user = User.query.filter(User.email==USER_EMAIL).first()
+    user_offer = UserOffer.query.filter(UserOffer.user==global_user).filter(UserOffer.offer_id==offer_id).first()
     if user_offer:
         user_offer.status = UserOffer.OFFER_DISMISSED
         db.session.commit()
     return app.send_static_file('index.html')
 
-@login_required
 @cross_origin()
 @app.route("/view_offer/<offer_id>")
 def view_offer(offer_id):
-    from flask.ext.security.core import current_user
-    user_offer = UserOffer.query.filter(UserOffer.user==current_user).filter(UserOffer.offer_id==offer_id).first()
+    global_user = User.query.filter(User.email==USER_EMAIL).first()
+    user_offer = UserOffer.query.filter(UserOffer.user==global_user).filter(UserOffer.offer_id==offer_id).first()
     if user_offer:
         user_offer.status = UserOffer.OFFER_VIEWED
         db.session.commit()
     return app.send_static_file('index.html')
 
-@login_required
 @app.route("/")
 def index():
     return app.send_static_file('index.html')
 
-@login_required
 @app.route("/mvp/<query>")
 def mvp(query):
     offers = list(ApiHelper.request_offers(query_string=query,

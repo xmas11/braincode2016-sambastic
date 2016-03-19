@@ -1,7 +1,10 @@
 import { combineReducers } from 'redux';
 import {
     CREATE_TRACKER,
+    TRACKER_CREATED,
     LIST_TRACKERS,
+    TRACKERS_LISTED,
+
     LIST_OFFERS_FOR_TRACKER,
     SET_VISIBILITY_FILTER,
     VisibilityFilters
@@ -18,6 +21,12 @@ function visibilityFilter(state = SHOW_ALL, action) {
     }
 }
 
+function trackers(state = {}, action) {
+    if (action.type === TRACKERS_LISTED) {
+        return action.trackers;
+    }
+    return state;
+}
 /*
 function todos(state = [], action) {
     switch (action.type) {
@@ -45,8 +54,8 @@ function todos(state = [], action) {
 */
 
 const pricemize = combineReducers({
-    visibilityFilter
-    //todos
+    visibilityFilter,
+    trackers
 });
 
 export default pricemize

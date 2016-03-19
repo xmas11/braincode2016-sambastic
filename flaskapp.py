@@ -22,6 +22,19 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SECRET_KEY'] = SECRET_KEY
 db = SQLAlchemy(app)
 
+def create_or_update(session, model, defaults=None, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        for k, v in defaults or {}:
+            setattr(instance, k, v)
+        return instance, False
+    else:
+        params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
+        params.update(defaults or {})
+        instance = model(**params)
+        session.add(instance)
+        return instance, True
+
 """***********  User management  ************"""
 
 roles_users = db.Table('roles_users',
@@ -117,16 +130,25 @@ class Offer(db.Model):
     changed_dt = db.Column(db.DateTime)
     sold_dt = db.Column(db.DateTime)
 
+    @classmethod
+    def create_or_update(cls, offer_data):
+        pass
+
 class TrackerOffer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
     tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
     offer = db.relationship("Offer")
 
 class UserOffer(db.Model):
+    # statuses
+    OFFER_NOT_VIEWED = "not_viewed"
+    OFFER_VIEWED = "viewed"
+    OFFER_DISMISSED = "dismissed"
+
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     offer = db.relationship("Offer")
-    status = db.Column(db.Integer)
+    status = db.Column(db.String(STR_LEN), default=OFFER_NOT_VIEWED)
     last_seen = db.Column(db.DateTime)
 
 class UserTracker(db.Model):
@@ -152,22 +174,23 @@ class OfferLog(db.Model):
     created_at_dt = db.Column(db.DateTime, primary_key=True)
 
 class Tracker(db.Model):
-    JSON_FIELDS = ['id', 'name', 'query', 'min_price', 'max_price']
+    JSON_FIELDS = ['id', 'name', 'query_string', 'min_price', 'max_price']
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STR_LEN))
-    query = db.Column(db.String(STR_LEN))
+    query_string = db.Column(db.String(STR_LEN))
     min_price = db.Column(db.Integer)
     max_price = db.Column(db.Integer)
     offers = db.relationship('TrackerOffer', backref='tracker')
 
-"""
-class ProductOffers(db.Model):
-    pass
+    def fill_offers(self, reset=False):
+        if reset or (not self.offers):
+            for offer_data in ApiHelper.request_offers(self.query_string,
+                                              min_price=self.min_price,
+                                              max_price=self.max_price):
+                offer = Offer.create_or_update(offer_data)
 
-class ProductFilter(db.Model):
-    pass
-"""
-# standard decorator style
+
+
 
 def on_offer_field_change(field):
     def _on_field_change(offer, value, old_value, initiator):
@@ -219,11 +242,35 @@ def create_tracker():
 
 @login_required
 @app.route("/offers_for_tracker/<tracker_id>")
-def offers_for_tracker(tracker_id):
+def user_offers_for_tracker(tracker_id):
+    tracker_offer_ids = map(lambda x: x.offer.offer_id,
+                            TrackerOffer.query.filter(TrackerOffer.tracker_id==tracker_id))
     offers = []
-    for tracker_offer in TrackerOffer.query.filter(TrackerOffer.tracker_id==tracker_id):
-        offers.append(instance_to_dict(Offer, tracker_offer.offer))
+    for user_offer in UserOffer.query.filter(UserOffer.offer_id.in_(tracker_offer_ids)):
+        offer_data = instance_to_dict(Offer, user_offer.offer)
+        offer_data['status'] = user_offer.status
+        offers.append(offer_data)
     return json.dumps(offers)
+
+@login_required
+@app.route("/dismiss_offer/<offer_id>")
+def dismiss_offer(offer_id):
+    from flask.ext.security.core import current_user
+    user_offer = UserOffer.query.filter(UserOffer.user==current_user).filter(UserOffer.offer_id==offer_id).first()
+    if user_offer:
+        user_offer.status = UserOffer.OFFER_DISMISSED
+        db.session.commit()
+    return app.send_static_file('index.html')
+
+@login_required
+@app.route("/view_offer/<offer_id>")
+def view_offer(offer_id):
+    from flask.ext.security.core import current_user
+    user_offer = UserOffer.query.filter(UserOffer.user==current_user).filter(UserOffer.offer_id==offer_id).first()
+    if user_offer:
+        user_offer.status = UserOffer.OFFER_VIEWED
+        db.session.commit()
+    return app.send_static_file('index.html')
 
 @login_required
 @app.route("/")

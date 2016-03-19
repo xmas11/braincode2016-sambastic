@@ -17,7 +17,7 @@ session.add(tracker)
 offer = Offer(offer_id='offer_1', title='Offer 1')
 session.add(offer)
 
-user_offer = UserOffer(user=user, offer=offer)
+user_offer = UserOffer(user=user, offer=offer, status="not_viewed")
 session.add(user_offer)
 
 offer_tracker = TrackerOffer(offer=offer, tracker=tracker)
@@ -31,5 +31,8 @@ for user_tracker in user.trackers:
     print(user_tracker.tracker.name, user_tracker.tracker.id)
 
 for tracker_offer in tracker.offers:
-    print(tracker_offer.offer.title)
+    print(tracker_offer.offer.title, tracker_offer.offer.offer_id)
+
+
+
 

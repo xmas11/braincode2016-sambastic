@@ -1,12 +1,15 @@
-import React, { Component } from 'react';
+import React from 'react';
+import { Button } from 'react-bootstrap';
 
-export default class Hello extends Component {
+export default class Hello extends React.Component {
     constructor(...args) {
         super(...args);
     }
     render() {
         return (
-            <div>Hello</div>
+            <Button>
+                Hello
+            </Button>
         );
     }
 }

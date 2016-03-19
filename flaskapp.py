@@ -212,7 +212,19 @@ class Tracker(db.Model):
     query_string = db.Column(db.String(STR_LEN))
     min_price = db.Column(db.Integer)
     max_price = db.Column(db.Integer)
+    image_url = db.Column(db.String(STR_LEN))
     offers = db.relationship('TrackerOffer', backref='tracker')
+
+    def get_image_url(self):
+        if self.image_url:
+            return self.image_url
+        offers = sorted(filter(lambda x: x.offer.image_url, self.offers),
+                        key=lambda x: max(x.offer.buy_now_price, x.offer.highest_bid_amount),
+                        reverse=True)
+        if offers:
+            self.image_url = offers[0].offer.image_url
+            db.session.commit()
+            return self.image_url
 
     def fetch_offers(self, reset=False):
         if reset or (not self.offers):
@@ -261,10 +273,13 @@ app.logger.setLevel(logging.ERROR)
 @cross_origin()
 @app.route("/trackers")
 def get_trackers():
-    global_user = User.query.filter(User.email==USER_EMAIL).first()
+    #global_user = User.query.filter(User.email==USER_EMAIL).first()
     trackers = []
-    for user_tracker in UserTracker.query.filter(UserTracker.user==global_user):
-        trackers.append(instance_to_dict(Tracker, user_tracker.tracker))
+    #for user_tracker in UserTracker.query.filter(UserTracker.user==global_user):
+    for tracker in Tracker.query.all():
+        tracker_dict = instance_to_dict(Tracker, tracker)
+        tracker_dict['image_url'] = tracker.get_image_url()
+        trackers.append(tracker_dict)
     return json.dumps(trackers)
 
 @cross_origin()

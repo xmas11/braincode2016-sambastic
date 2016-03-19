@@ -206,7 +206,7 @@ class OfferLog(db.Model):
     created_at_dt = db.Column(db.DateTime, primary_key=True)
 
 class Tracker(db.Model):
-    JSON_FIELDS = ['id', 'name', 'query_string', 'min_price', 'max_price']
+    JSON_FIELDS = ['id', 'name', 'query_string', 'min_price', 'max_price', 'image_url']
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STR_LEN))
     query_string = db.Column(db.String(STR_LEN))
@@ -278,8 +278,9 @@ def get_trackers():
     #for user_tracker in UserTracker.query.filter(UserTracker.user==global_user):
     for tracker in Tracker.query.all():
         tracker.fetch_offers()
+        print(tracker.name, tracker.get_image_url())
         tracker_dict = instance_to_dict(Tracker, tracker)
-        tracker_dict['image_url'] = tracker.get_image_url()
+        print(tracker_dict)
         trackers.append(tracker_dict)
     return json.dumps(trackers)
 

@@ -1,4 +1,5 @@
 import datetime
+import json
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -40,7 +41,8 @@ class User(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
-    offers = db.relationship("UserOffer")
+    offers = db.relationship("UserOffer", backref="user")
+    trackers = db.relationship("UserTracker", backref="user")
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -49,9 +51,33 @@ security = Security(app, user_datastore)
 """ ******************  Models  ******************** """
 
 class Category(db.Model):
-    name = db.Column(db.String(STR_LEN), primary_key=True)
-    #parent = db.relationship('Category', backref='children')
-    #parent_name = db.Column(db.String(STR_LEN), db.ForeignKey('category.name'))
+    category_id = db.Column(db.String(STR_LEN), primary_key=True)
+    name = db.Column(db.String(STR_LEN))
+    has_children = db.Column(db.Boolean)
+    parent_id = db.Column(db.String(STR_LEN), db.ForeignKey('category.category_id'))
+    children = db.relationship('Category', backref=db.backref('parent', remote_side=[category_id]))
+
+    @classmethod
+    def fetch_all_categories(cls):
+        categories = cls.query.filter()
+
+    @classmethod
+    def save_categories(cls, category_data_list):
+        session = db.session
+        for category_data in category_data_list:
+            cls.save_category(category_data, session=session)
+        session.commit()
+
+    @classmethod
+    def save_category(cls, category_data, session=None):
+        category = cls(category_id=category_data['id'],
+                       name=category_data.get('name'),
+                       has_children=category_data.get('hasChildren'))
+        if session:
+            session.add(category)
+        else:
+            db.session.add(category)
+            db.session.commit()
 
 class AllegroUser(db.Model):
     THRESHOLDS = [5, 50, 250, 2500, 12500, 1e9]
@@ -67,7 +93,11 @@ class AllegroUser(db.Model):
             rclass += 1
 
 class Offer(db.Model):
+    JSON_FIELDS = ['offer_id', 'title', 'seller_login', 'url', 'sold', 'finished',
+                   'buy_now_price', 'highest_bid_amount', 'sold_price', 'cheapest_shipment',
+                   'bids_number', 'published_dt', 'end_dt', 'changed_dt', 'sold_dt']
     offer_id = db.Column(db.String(STR_LEN), primary_key=True)
+
     title = db.Column(db.Text)
     seller = db.relationship('AllegroUser')
     seller_login = db.Column(db.String(STR_LEN), db.ForeignKey('allegro_user.login'))
@@ -87,12 +117,22 @@ class Offer(db.Model):
     changed_dt = db.Column(db.DateTime)
     sold_dt = db.Column(db.DateTime)
 
+class TrackerOffer(db.Model):
+    offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
+    tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
+    offer = db.relationship("Offer")
+
 class UserOffer(db.Model):
     offer_id = db.Column(db.String(STR_LEN), db.ForeignKey('offer.offer_id'), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     offer = db.relationship("Offer")
     status = db.Column(db.Integer)
     last_seen = db.Column(db.DateTime)
+
+class UserTracker(db.Model):
+    tracker_id = db.Column(db.Integer, db.ForeignKey('tracker.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    tracker = db.relationship("Tracker")
 
 class Purchase(db.Model):
     offer = db.relationship("Offer", backref="purchases")
@@ -111,11 +151,16 @@ class OfferLog(db.Model):
     end_dt = db.Column(db.DateTime)
     created_at_dt = db.Column(db.DateTime, primary_key=True)
 
+class Tracker(db.Model):
+    JSON_FIELDS = ['id', 'name', 'query', 'min_price', 'max_price']
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(STR_LEN))
+    query = db.Column(db.String(STR_LEN))
+    min_price = db.Column(db.Integer)
+    max_price = db.Column(db.Integer)
+    offers = db.relationship('TrackerOffer', backref='tracker')
 
 """
-class Product(db.Model):
-    pass
-
 class ProductOffers(db.Model):
     pass
 
@@ -139,20 +184,11 @@ event.listen(Offer.buy_now_price, 'set', on_offer_field_change('buy_now_price'))
 event.listen(Offer.end_dt, 'set', on_offer_field_change('end_dt'))
 event.listen(Offer.highest_bid_amount, 'set', on_offer_field_change('highest_bid_amount'))
 
-"""
-@event.listens_for(Offer, 'before_update')
-def on_before_update(mapper, connection, offer):
-    if offer and offer.offer_id:
-        fields = ['offer_id', 'buy_now_price', 'end_dt', 'highest_bid_amount']
-        last_log = OfferLog.query.order_by(desc('created_at_dt')).first()
-        if (not last_log) or any(getattr(last_log, field) != getattr(offer, field) for field in fields):
-            log = OfferLog(offer=offer)
-            for field in fields:
-                setattr(log, field, getattr(offer, field))
-            print('creating log', vars(log))
-            db.session.add(log)
-            db.session.commit()
-"""
+def instance_to_dict(mapper, instance):
+    res = dict()
+    for field in mapper.JSON_FIELDS:
+        res[field] = getattr(instance, field)
+    return res
 
 @event.listens_for(OfferLog, 'before_insert')
 def on_offer_log_insert(mapper, connection, offer_log):
@@ -160,6 +196,34 @@ def on_offer_log_insert(mapper, connection, offer_log):
 
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
+
+@login_required
+@app.route("/trackers")
+def get_trackers():
+    from flask.ext.security.core import current_user
+    trackers = []
+    for user_tracker in UserTracker.query.filter(UserTracker.user==current_user):
+        trackers.append(instance_to_dict(Tracker, user_tracker.tracker))
+    return json.dumps(trackers)
+
+@login_required
+@app.route("/create_tracker", methods=['POST'])
+def create_tracker():
+    from flask.ext.security.core import current_user
+    data = json.loads(request.data)
+    tracker = Tracker(**data)
+    db.session.add(tracker)
+    user_tracker = UserTracker(user=current_user, tracker=tracker)
+    db.session.add(user_tracker)
+    db.session.commit()
+
+@login_required
+@app.route("/offers_for_tracker/<tracker_id>")
+def offers_for_tracker(tracker_id):
+    offers = []
+    for tracker_offer in TrackerOffer.query.filter(TrackerOffer.tracker_id==tracker_id):
+        offers.append(instance_to_dict(Offer, tracker_offer.offer))
+    return json.dumps(offers)
 
 @login_required
 @app.route("/")

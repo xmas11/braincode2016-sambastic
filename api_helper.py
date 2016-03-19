@@ -4,9 +4,10 @@ from app_exceptions import ApiException
 
 from settings import API_KEY
 
+OFFER_URL = 'http://api.natelefon.pl/v1/allegro/offers/%(offer_id)s?access_token=%(api_key)s'
 OFFERS_URL = 'http://api.natelefon.pl/v2/allegro/offers?access_token=%(api_key)s'
 USER_URL = 'http://api.natelefon.pl/v1/allegro/users/%(user_id)s?access_token=%(api_key)s'
-OFFER_URL = 'http://api.natelefon.pl/v1/allegro/offers/%(offer_id)s?access_token=%(api_key)s'
+CATEGORIES_URL = 'http://api.natelefon.pl/v1/allegro/categories?access_token=%(api_key)s'
 
 def resp_ok(resp):
     if resp.ok:
@@ -46,8 +47,15 @@ class ApiHelper(object):
         return cls._get(USER_URL % {'api_key': API_KEY, 'user_id': user_id})
 
     @classmethod
-    def _get(cls, url):
-        resp = requests.get(url)
+    def request_categories(cls, parent_category_id=None):
+        params = parent_category_id and {'parentCategory': parent_category_id}
+        for category in cls._get(CATEGORIES_URL % {'api_key': API_KEY}, params=params):
+            yield category
+
+    @classmethod
+    def _get(cls, url, params=None):
+        params = params or {}
+        resp = requests.get(url, params=json.dumps(params))
         if resp_ok(resp):
             return resp.json()
 

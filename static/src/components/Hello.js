@@ -1,8 +1,11 @@
 import React from 'react';
+import { fetchTrackers } from '../actions/actions';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import TrackerCard from './TrackerCard';
 import { Button, Card, Col, Footer, Navbar, NavItem, Row } from 'react-materialize';
 
-export default class Hello extends React.Component {
+class Hello extends React.Component {
     constructor(...args) {
         super(...args);
 
@@ -19,10 +22,15 @@ export default class Hello extends React.Component {
     }
 
     render() {
+        console.log(this.props);
         return (
             <div>
                 <Navbar brand="Sambastic" right>
-                    <NavItem href='#'>Refresh</NavItem>
+                    <NavItem>
+                        <Button onClick={this.props.onClick}>
+                            Click me!
+                        </Button>
+                    </NavItem>
                 </Navbar>
                 <div className="container">
                     <Row>
@@ -53,3 +61,13 @@ export default class Hello extends React.Component {
         );
     }
 }
+
+const mapStateToProps = state => ({
+    state: state
+});
+
+const mapDispatchToProps = dispatch => ({
+    onClick: () => dispatch(fetchTrackers())
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(Hello);

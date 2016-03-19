@@ -17,8 +17,13 @@ let exampleState = {
  * API calls
  */
 export const CREATE_TRACKER = 'CREATE_TRACKER';
+export const TRACKER_CREATED = 'TRACKER_CREATED';
+
 export const LIST_TRACKERS = 'LIST_TRACKERS';
+export const TRACKERS_LISTED = 'TRACKERS_LISTED';
+
 export const LIST_OFFERS_FOR_TRACKER = 'LIST_OFFERS_FOR_TRACKER';
+export const OFFERS_FOR_TRACKER_LISTED = 'OFFERS_FOR_TRACKER_LISTED';
 
 /*
  * other constants
@@ -31,16 +36,38 @@ export const VisibilityFilters = {
     SHOW_ACTIVE: 'SHOW_ACTIVE'
 };
 
+export const HOST = '//localhost:5000';
+
+export function listTrackers() {
+    return {
+        type: LIST_TRACKERS
+    }
+}
+
+export function trackersListed(json) {
+    console.log('trackersListed', json);
+    return {
+        type: TRACKERS_LISTED,
+        trackers: json.data.children.map(child => child.data),
+        receivedAt: Date.now()
+    }
+}
 /*
  * action creators
  */
 
-export function createTracker(tracker) {
-    return { type: CREATE_TRACKER, payload: tracker }
-}
+export function fetchTrackers() {
+    return dispatch => {
+        dispatch(listTrackers());
 
-export function listTrackers() {
-    return { type: LIST_TRACKERS }
+        return fetch(`${HOST}/trackers`)
+            .then(response => response.json())
+            .then(json => {
+                    console.log('fetchTrackers done', json);
+                    return dispatch(trackersListed(json));
+                }
+            )
+    }
 }
 
 export function listOffersForTracker(trackerId) {

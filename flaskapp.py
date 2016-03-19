@@ -277,6 +277,7 @@ def get_trackers():
     trackers = []
     #for user_tracker in UserTracker.query.filter(UserTracker.user==global_user):
     for tracker in Tracker.query.all():
+        tracker.fetch_offers()
         tracker_dict = instance_to_dict(Tracker, tracker)
         tracker_dict['image_url'] = tracker.get_image_url()
         trackers.append(tracker_dict)

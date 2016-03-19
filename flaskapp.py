@@ -4,6 +4,7 @@ from sqlalchemy.sql.expression import ClauseElement
 from flask import Flask
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask.ext.cors import CORS, cross_origin
 from flask.ext.security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
 from sqlalchemy import event, desc
@@ -21,6 +22,7 @@ import time
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SECRET_KEY'] = SECRET_KEY
+CORS(app)
 db = SQLAlchemy(app)
 
 def dget(d, fields):
@@ -255,6 +257,7 @@ app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 
 @login_required
+@cross_origin()
 @app.route("/trackers")
 def get_trackers():
     from flask.ext.security.core import current_user
@@ -264,6 +267,7 @@ def get_trackers():
     return json.dumps(trackers)
 
 @login_required
+@cross_origin()
 @app.route("/create_tracker", methods=['POST'])
 def create_tracker():
     from flask.ext.security.core import current_user
@@ -276,6 +280,7 @@ def create_tracker():
     tracker.fetch_offers(reset=data.get('reset', False))
 
 @login_required
+@cross_origin()
 @app.route("/offers_for_tracker/<tracker_id>")
 def user_offers_for_tracker(tracker_id):
     tracker_offer_ids = map(lambda x: x.offer.offer_id,
@@ -288,6 +293,7 @@ def user_offers_for_tracker(tracker_id):
     return json.dumps(offers)
 
 @login_required
+@cross_origin()
 @app.route("/dismiss_offer/<offer_id>")
 def dismiss_offer(offer_id):
     from flask.ext.security.core import current_user
@@ -298,6 +304,7 @@ def dismiss_offer(offer_id):
     return app.send_static_file('index.html')
 
 @login_required
+@cross_origin()
 @app.route("/view_offer/<offer_id>")
 def view_offer(offer_id):
     from flask.ext.security.core import current_user

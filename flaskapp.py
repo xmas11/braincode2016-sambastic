@@ -335,13 +335,13 @@ def index():
 def mvp(query):
     offers = list(ApiHelper.request_offers(query_string=query,
                                       min_price=100,
-                                      max_price=3000))
+                                      max_price=9000))
     prices = []
     for offer in offers:
-        if(offer['prices']['buyNow']>300):
+        if(offer['prices']['buyNow']>1):
             prices.append(offer['prices']['buyNow'])
-    plt.figure(1)
-    plt.hist(prices, bins=20)
+    plt.figure(2)
+    plt.hist(prices, bins=20, normed=True)
     m=hashlib.md5()
     m.update(query)
     hash = str(int(time.time()))
